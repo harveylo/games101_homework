@@ -1,5 +1,6 @@
 #include "Triangle.hpp"
 #include "rasterizer.hpp"
+#include <cmath>
 #include <eigen3/Eigen/Eigen>
 #include <iostream>
 #include <opencv2/opencv.hpp>
@@ -19,15 +20,23 @@ Eigen::Matrix4f get_view_matrix(Eigen::Vector3f eye_pos)
     return view;
 }
 
+// Angle is in radians or degrees?
+// I will assume it is in radians here.
 Eigen::Matrix4f get_model_matrix(float rotation_angle)
 {
-    Eigen::Matrix4f model = Eigen::Matrix4f::Identity();
+    // Eigen::Matrix4f model = Eigen::Matrix4f::Identity();
 
     // TODO: Implement this function
     // Create the model matrix for rotating the triangle around the Z axis.
     // Then return it.
 
-    return model;
+    Eigen::Matrix4f rotate;
+    rotate << std::cos(rotation_angle/180.0*MY_PI), -std::sin(rotation_angle/180.0*MY_PI), 0, 0,
+              std::sin(rotation_angle/180.0*MY_PI), std::cos(rotation_angle/180.0*MY_PI), 0, 0,
+              0, 0, 1, 0,
+              0, 0, 0, 1;
+
+    return rotate;
 }
 
 Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio,
@@ -35,12 +44,35 @@ Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio,
 {
     // Students will implement this function
 
-    Eigen::Matrix4f projection = Eigen::Matrix4f::Identity();
-
+    Eigen::Matrix4f projection; 
     // TODO: Implement this function
     // Create the projection matrix for the given parameters.
     // Then return it.
+    float t = std::tan(eye_fov/2.0/180.0*MY_PI) * std::abs(zNear);
+    float r = t * aspect_ratio;
+    float l = -r;
+    float b = -t;
 
+    Eigen::Matrix4f persp2ortho;
+    persp2ortho << zNear,0,0,0,
+                    0,zNear,0,0,
+                    0,0,zNear+zFar,-zNear*zFar,
+                    0,0,1,0;
+    
+    Eigen::Matrix4f shift;
+    Eigen::Matrix4f  scale;
+    scale << 2.0/(r-l),0,0,0,
+            0,2.0/(t-b),0,0,
+            0,0,2.0/(zNear-zFar),0,
+            0,0,0,1;
+    shift << 1.0,.0,.0,-(r+l)/2.0,
+            .0,1.0,.0,-(b+t)/2.0,
+            .0,.0,1.0,-(zNear+zFar)/2.0,
+            .0,.0,.0,1.0;
+    Eigen::Matrix4f ortho = scale*shift;
+
+    projection = ortho * persp2ortho;
+    
     return projection;
 }
 
@@ -104,7 +136,7 @@ int main(int argc, const char** argv)
         cv::imshow("image", image);
         key = cv::waitKey(10);
 
-        std::cout << "frame count: " << frame_count++ << '\n';
+        std::cerr << "\rframe count: " << frame_count++<<std::flush;
 
         if (key == 'a') {
             angle += 10;
