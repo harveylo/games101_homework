@@ -2,11 +2,15 @@
 #include "rasterizer.hpp"
 #include <cmath>
 #include <eigen3/Eigen/Eigen>
+#include <eigen3/Eigen/src/Core/Matrix.h>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
 constexpr double MY_PI = 3.1415926;
 
+static Eigen::Vector3f rotating_axis;
+
+// move the objects along with the camera(eye) to make the camera(eye) at the origin
 Eigen::Matrix4f get_view_matrix(Eigen::Vector3f eye_pos)
 {
     Eigen::Matrix4f view = Eigen::Matrix4f::Identity();
@@ -30,11 +34,28 @@ Eigen::Matrix4f get_model_matrix(float rotation_angle)
     // Create the model matrix for rotating the triangle around the Z axis.
     // Then return it.
 
+    Eigen::Matrix3f I = Eigen::Matrix3f::Identity();
+    Eigen::Matrix3f cross_product_matrix;
+
+    cross_product_matrix << 0,-rotating_axis[2],rotating_axis[1],rotating_axis[2],0,-rotating_axis[0],-rotating_axis[1],rotating_axis[0],0;
+
     Eigen::Matrix4f rotate;
-    rotate << std::cos(rotation_angle/180.0*MY_PI), -std::sin(rotation_angle/180.0*MY_PI), 0, 0,
-              std::sin(rotation_angle/180.0*MY_PI), std::cos(rotation_angle/180.0*MY_PI), 0, 0,
-              0, 0, 1, 0,
-              0, 0, 0, 1;
+
+    Eigen::Matrix3f rotate_3d;
+
+    rotate_3d  = (std::cos(rotation_angle/180.0*MY_PI)*I) + 
+                (1-std::cos(rotation_angle/180.0*MY_PI))*(rotating_axis*rotating_axis.transpose()) + 
+                std::sin(rotation_angle/180.0*MY_PI)*cross_product_matrix;
+
+    rotate << rotate_3d(0,0),rotate_3d(0,1),rotate_3d(0,2),0,
+            rotate_3d(1,0),rotate_3d(1,1),rotate_3d(1,2),0,
+            rotate_3d(2,0),rotate_3d(2,1),rotate_3d(2,2),0,
+            0,0,0,1;
+
+    // rotate << std::cos(rotation_angle/180.0*MY_PI), -std::sin(rotation_angle/180.0*MY_PI), 0, 0,
+    //           std::sin(rotation_angle/180.0*MY_PI), std::cos(rotation_angle/180.0*MY_PI), 0, 0,
+    //           0, 0, 1, 0,
+    //           0, 0, 0, 1;
 
     return rotate;
 }
@@ -76,12 +97,22 @@ Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio,
     return projection;
 }
 
+
+// Entry point
 int main(int argc, const char** argv)
 {
+
+    // In design, there are 2 commandline arguments:
+    // angle of rotation, default: 0
+    // usage: ./Rasterizer -r <angle>
     float angle = 0;
+    // this variable is used to indicate whether there is a commandline argument
     bool command_line = false;
+    // output file name, default: output.png
+    // usage: ./Rasterizer -r <angle> <output_file_name>
     std::string filename = "output.png";
 
+    // the arguments handling is very simple, even kinda awkward
     if (argc >= 3) {
         command_line = true;
         angle = std::stof(argv[2]); // -r by default
@@ -92,13 +123,19 @@ int main(int argc, const char** argv)
             return 0;
     }
 
+    // Intialize a rasterizer with width=700 and height=700
     rst::rasterizer r(700, 700);
 
     Eigen::Vector3f eye_pos = {0, 0, 5};
 
+    // all the vertices' positions
     std::vector<Eigen::Vector3f> pos{{2, 0, -2}, {0, 2, -2}, {-2, 0, -2}};
 
+    // a triangle is made up of the vertices' indices in pos
     std::vector<Eigen::Vector3i> ind{{0, 1, 2}};
+
+    // initialize the rotating axis
+    rotating_axis << 1, 0, 0;
 
     auto pos_id = r.load_positions(pos);
     auto ind_id = r.load_indices(ind);
@@ -145,6 +182,7 @@ int main(int argc, const char** argv)
             angle -= 10;
         }
     }
+    std::cerr<<std::endl;
 
     return 0;
 }

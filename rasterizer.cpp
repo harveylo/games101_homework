@@ -134,6 +134,7 @@ auto to_vec4(const Eigen::Vector3f& v3, float w = 1.0f)
 
 void rst::rasterizer::draw(rst::pos_buf_id pos_buffer, rst::ind_buf_id ind_buffer, rst::Primitive type)
 {
+    // Only support drawing triangles now.
     if (type != rst::Primitive::Triangle)
     {
         throw std::runtime_error("Drawing primitives other than triangle is not implemented yet!");
@@ -141,6 +142,7 @@ void rst::rasterizer::draw(rst::pos_buf_id pos_buffer, rst::ind_buf_id ind_buffe
     auto& buf = pos_buf[pos_buffer.pos_id];
     auto& ind = ind_buf[ind_buffer.ind_id];
 
+    //! what are f1 and f2?
     float f1 = (100 - 0.1) / 2.0;
     float f2 = (100 + 0.1) / 2.0;
 
@@ -149,16 +151,19 @@ void rst::rasterizer::draw(rst::pos_buf_id pos_buffer, rst::ind_buf_id ind_buffe
     {
         Triangle t;
 
+        //calculate mvp transformed vertices
         Eigen::Vector4f v[] = {
                 mvp * to_vec4(buf[i[0]], 1.0f),
                 mvp * to_vec4(buf[i[1]], 1.0f),
                 mvp * to_vec4(buf[i[2]], 1.0f)
         };
 
+        // homogenous division
         for (auto& vec : v) {
             vec /= vec.w();
         }
 
+        // viewport transformation
         for (auto & vert : v)
         {
             vert.x() = 0.5*width*(vert.x()+1.0);
@@ -166,13 +171,15 @@ void rst::rasterizer::draw(rst::pos_buf_id pos_buffer, rst::ind_buf_id ind_buffe
             vert.z() = vert.z() * f1 + f2;
         }
 
+        // set triangle vertices
         for (int i = 0; i < 3; ++i)
         {
             t.setVertex(i, v[i].head<3>());
-            t.setVertex(i, v[i].head<3>());
-            t.setVertex(i, v[i].head<3>());
+            // t.setVertex(i, v[i].head<3>());
+            // t.setVertex(i, v[i].head<3>());
         }
 
+        // set colors of each vertex
         t.setColor(0, 255.0,  0.0,  0.0);
         t.setColor(1, 0.0  ,255.0,  0.0);
         t.setColor(2, 0.0  ,  0.0,255.0);

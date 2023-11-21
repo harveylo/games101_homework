@@ -10,6 +10,8 @@
 using namespace Eigen;
 
 namespace rst {
+
+// This enum class indicates the type of a buffer
 enum class Buffers
 {
     Color = 1,
@@ -26,6 +28,7 @@ inline Buffers operator&(Buffers a, Buffers b)
     return Buffers((int)a & (int)b);
 }
 
+// This enum class indicates the type of primitive to be rendered
 enum class Primitive
 {
     Line,
@@ -50,6 +53,7 @@ struct ind_buf_id
 class rasterizer
 {
   public:
+    // The init function in the rasterizer, setting width and height.
     rasterizer(int w, int h);
     pos_buf_id load_positions(const std::vector<Eigen::Vector3f>& positions);
     ind_buf_id load_indices(const std::vector<Eigen::Vector3i>& indices);
@@ -71,11 +75,18 @@ class rasterizer
     void rasterize_wireframe(const Triangle& t);
 
   private:
+    // Model Transformation Matrix
     Eigen::Matrix4f model;
+    // View Transformation Matrix
     Eigen::Matrix4f view;
+    // Projection Transformation Matrix
     Eigen::Matrix4f projection;
 
+    // stores all positions of vertices
     std::map<int, std::vector<Eigen::Vector3f>> pos_buf;
+    // stores every triangle's three indices of vertices
+    // for example, if an element of ind_buf is {0, 1, 2}, it means that
+    // the corresponding triangle is made up of the vertices stored in pos_buf with indices 0, 1, 2
     std::map<int, std::vector<Eigen::Vector3i>> ind_buf;
 
     std::vector<Eigen::Vector3f> frame_buf;
