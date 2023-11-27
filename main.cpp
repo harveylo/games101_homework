@@ -120,8 +120,9 @@ int main(int argc, const char** argv)
         cv::imshow("image", image);
         key = cv::waitKey(10);
 
-        std::cout << "frame count: " << frame_count++ << '\n';
+        std::cout << "\rframe count: " << frame_count++ << std::flush;
     }
+    std::cout<<std::endl;
 
     return 0;
 }
