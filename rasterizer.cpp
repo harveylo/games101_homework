@@ -144,7 +144,7 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t) {
             depth /= 4;
             if(value.x()+value.y()+value.z()>0){
                 auto index = get_index(x, y);
-                if(depth_buf[index] < depth){
+                if(depth_buf[index] > depth){
                     depth_buf[index] = depth;
                     set_pixel(Eigen::Vector3f(x, y, 0), value);
                 }
