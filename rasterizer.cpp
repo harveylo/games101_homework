@@ -88,7 +88,7 @@ void rst::rasterizer::draw(pos_buf_id pos_buffer, ind_buf_id ind_buffer, col_buf
         {
             vert.x() = 0.5*width*(vert.x()+1.0);
             vert.y() = 0.5*height*(vert.y()+1.0);
-            vert.z() = vert.z() * f1 + f2;
+            vert.z() = -vert.z() * f1 + f2;
         }
 
         for (int i = 0; i < 3; ++i)
@@ -125,43 +125,39 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t) {
         for(int y = bottom; y <= top; y++){
             //~ with MSAA
             auto value = Eigen::Vector3f(0,0,0);
-            auto depth = 0.0f;
-            for(int i = 1;i<=2;i++){
-                for(int j = 1;j<=2;j++){
-                    auto px = x + i * 0.3333f;
-                    auto py = y + j * 0.3333f;
-                    if(insideTriangle(px, py, t.v)){
-                        auto [alpha, beta, gamma] = computeBarycentric2D(px, py, t.v);
-                        auto w_reciprocal = 1.0/(alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
-                        auto z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
-                        z_interpolated *= w_reciprocal;
-                        depth += z_interpolated;
-                        value += t.getColor();
-                    }
+            auto depth = std::numeric_limits<float>::infinity();
+            for(int i = 0;i<2;i++){
+                for(int j = 0;j<2;j++){
+                    auto px = x + i * 0.5 + 0.25;
+                    auto py = y + j * 0.5 + 0.25;
+                    if(!insideTriangle(px, py, t.v)) continue;
+                    auto [alpha, beta, gamma] = computeBarycentric2D(px, py, t.v);
+                    auto w_reciprocal = 1.0/(alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
+                    auto z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
+                    z_interpolated *= w_reciprocal;
+                    depth = std::min(z_interpolated,depth);
+                    value += t.getColor();
                 }
             }
             value /= 4;
-            depth /= 4;
+            // depth /= 4;
             if(value.x()+value.y()+value.z()>0){
                 auto index = get_index(x, y);
-                if(depth_buf[index] > depth){
-                    depth_buf[index] = depth;
-                    set_pixel(Eigen::Vector3f(x, y, 0), value);
-                }
+                if(depth_buf[index] < depth) continue;
+                depth_buf[index] = depth;
+                set_pixel(Eigen::Vector3f(x, y, 0), value);
             }
 
             //~ without MSAA
-            // if (insideTriangle(x, y, t.v)) {
-            //     auto [alpha, beta, gamma] = computeBarycentric2D(x, y, t.v);
-            //     auto w_reciprocal = 1.0/(alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
-            //     auto z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
-            //     z_interpolated *= w_reciprocal;
-            //     auto index = get_index(x, y);
-            //     if (depth_buf[index] > z_interpolated) {
-            //         depth_buf[index] = z_interpolated;
-            //         set_pixel(Eigen::Vector3f(x, y, 0), t.getColor());
-            //     }
-            // }
+            // if (!insideTriangle(x, y, t.v)) continue;
+            // auto [alpha, beta, gamma] = computeBarycentric2D(x, y, t.v);
+            // auto w_reciprocal = 1.0/(alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
+            // auto z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
+            // z_interpolated *= w_reciprocal;
+            // auto index = get_index(x, y);
+            // if (depth_buf[index] < z_interpolated) continue;
+            // depth_buf[index] = z_interpolated;
+            // set_pixel(Eigen::Vector3f(x, y, 0), t.getColor());
         }
     }
 
