@@ -40,8 +40,9 @@ auto to_vec4(const Eigen::Vector3f& v3, float w = 1.0f)
 }
 
 
-static bool insideTriangle(int x, int y, const Vector3f* _v)
+static bool insideTriangle(float x, float y, const Vector3f* _v)
 {   
+    //! If you want to make MSAA work, the x and y parameters must be float
     // TODO : Implement this function to check if the point (x, y) is inside the triangle represented by _v[0], _v[1], _v[2]
     auto p0 = _v[0], p1 = _v[1], p2 = _v[2];
     auto e0 = Eigen::Vector3f(p1.x() - p0.x(), p1.y() - p0.y(), 0);
@@ -126,30 +127,28 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t) {
             //~ with MSAA
             auto value = Eigen::Vector3f(0,0,0);
             auto depth = std::numeric_limits<float>::infinity();
-            for(int i = 0;i<2;i++){
-                for(int j = 0;j<2;j++){
-                    auto px = x + i * 0.5 + 0.25;
-                    auto py = y + j * 0.5 + 0.25;
+            for(float i = 0.25;i<1.0;i+=0.5){
+                for(float j = 0.25;j<1.0;j+=0.5){
+                    auto px = x + i;
+                    auto py = y + j;
                     if(!insideTriangle(px, py, t.v)) continue;
                     auto [alpha, beta, gamma] = computeBarycentric2D(px, py, t.v);
                     auto w_reciprocal = 1.0/(alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
                     auto z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
                     z_interpolated *= w_reciprocal;
-                    depth = std::min(z_interpolated,depth);
+                    depth = std::min(z_interpolated, depth);
                     value += t.getColor();
                 }
             }
             value /= 4;
-            // depth /= 4;
-            if(value.x()+value.y()+value.z()>0){
-                auto index = get_index(x, y);
-                if(depth_buf[index] < depth) continue;
-                depth_buf[index] = depth;
-                set_pixel(Eigen::Vector3f(x, y, 0), value);
-            }
+            if(value.x()+value.y()+value.z()==0) continue;
+            auto index = get_index(x, y);
+            if(depth_buf[index] < depth) continue;
+            depth_buf[index] = depth;
+            set_pixel(Eigen::Vector3f(x, y, 0), value);
 
             //~ without MSAA
-            // if (!insideTriangle(x, y, t.v)) continue;
+            // if (!insideTriangle(x+0.5, y+0.5, t.v)) continue;
             // auto [alpha, beta, gamma] = computeBarycentric2D(x, y, t.v);
             // auto w_reciprocal = 1.0/(alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
             // auto z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
