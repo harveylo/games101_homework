@@ -149,7 +149,7 @@ auto to_vec4(const Eigen::Vector3f& v3, float w = 1.0f)
     return Vector4f(v3.x(), v3.y(), v3.z(), w);
 }
 
-static bool insideTriangle(int x, int y, const Vector4f* _v){
+static bool insideTriangle(float x, float y, const Vector4f* _v){
     Vector3f v[3];
     for(int i=0;i<3;i++)
         v[i] = {_v[i].x(),_v[i].y(), 1.0};
@@ -189,7 +189,14 @@ void rst::rasterizer::draw(std::vector<Triangle *> &TriangleList) {
         std::array<Eigen::Vector3f, 3> viewspace_pos;
 
         std::transform(mm.begin(), mm.end(), viewspace_pos.begin(), [](auto& v) {
-            return v.template head<3>();
+            // this in fact calls v.head<3>(), a template function
+            // but if v.head<3>() may be interpreted as '((v.head<3)>())', a boolean expression
+            // thus, to eliminate this ambiguity, C++ introduce the usage of 'template' keyword in such case to 
+            // explicitly indicate that, a template function is called here.
+            // ! do not regard the following statement as a variable definition with the type of (v.template) and value of head<3>()
+            return v. template head<3>();
+            // Model and view transformation wont invoke the homogeneous coordinates' variation, 
+            // thus normalization in this stage is not needed
         });
 
         Eigen::Vector4f v[] = {
@@ -216,7 +223,7 @@ void rst::rasterizer::draw(std::vector<Triangle *> &TriangleList) {
         {
             vert.x() = 0.5*width*(vert.x()+1.0);
             vert.y() = 0.5*height*(vert.y()+1.0);
-            vert.z() = vert.z() * f1 + f2;
+            vert.z() = -vert.z() * f1 + f2;
         }
 
         for (int i = 0; i < 3; ++i)
@@ -256,9 +263,107 @@ static Eigen::Vector2f interpolate(float alpha, float beta, float gamma, const E
     return Eigen::Vector2f(u, v);
 }
 
+
+template<typename T>
+inline T barycentric_interp(float alpha, float beta, float gamma, const T& v0, const T& v1, const T& v2){
+    return alpha * v0 + beta * v1 + gamma * v2;
+}
+
 //Screen space rasterization
 void rst::rasterizer::rasterize_triangle(const Triangle& t, const std::array<Eigen::Vector3f, 3>& view_pos) 
 {
+    auto v = t.toVector4();
+    
+    // Find out the bounding box of current triangle.
+    auto top = (int)std::min(std::ceil(std::max(v[0].y(), std::max(v[1].y(), v[2].y()))), (float)height-1);
+    auto bottom = (int)std::max(std::floor(std::min(v[0].y(), std::min(v[1].y(), v[2].y()))), 0.0f);
+    auto left = (int)std::max(std::floor(std::min(v[0].x(), std::min(v[1].x(), v[2].x()))), 0.0f);
+    auto right = (int)std::min(std::ceil(std::max(v[0].x(), std::max(v[1].x(), v[2].x()))), (float)width-1);
+    // iterate through the pixel and find if the current pixel is inside the triangle
+
+    for(int x = left; x <= right; x++){
+        for(int y = bottom; y <= top; y++){
+            //~ with MSAA
+            // auto value = Eigen::Vector3f(0,0,0);
+            // auto depth = std::numeric_limits<float>::infinity();
+            // for(float i = 0.25;i<1.0;i+=0.5){
+            //     for(float j = 0.25;j<1.0;j+=0.5){
+            //         auto px = x + i;
+            //         auto py = y + j;
+            //         if(!insideTriangle(px, py, t.v)) continue;
+
+            //         // calculate the barycentric coordinates
+            //         auto [alpha, beta, gamma] = computeBarycentric2D(px, py, t.v);
+
+            //         // calculate the interpolated depth(z)
+            //         auto w_reciprocal = 1.0/(alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
+            //         auto z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
+            //         z_interpolated *= w_reciprocal;
+            //         depth = std::min(z_interpolated, depth);
+
+            //         // calculate the interpolated color
+            //         auto colorp = barycentric_interp(alpha,beta,gamma,t.color[0],t.color[1],t.color[2]);
+
+            //         // calculate the interpolated normal
+            //         Eigen::Vector3f normalp = barycentric_interp(alpha,beta,gamma,t.normal[0],t.normal[1],t.normal[2]).normalized();
+
+            //         // calculate the interpolated uv coordinates
+            //         auto up = barycentric_interp(alpha, beta, gamma, t.tex_coords[0][0], t.tex_coords[1][0], t.tex_coords[2][0]);
+            //         auto vp = barycentric_interp(alpha, beta, gamma, t.tex_coords[0][1], t.tex_coords[1][1], t.tex_coords[2][1]);
+
+            //         // calculate the interpolated shading color
+            //         // interpolated shading coords
+            //         Eigen::Vector3f shading_coordsp = barycentric_interp(alpha, beta, gamma, view_pos[0], view_pos[1], view_pos[2]);
+            //         fragment_shader_payload payload(colorp, normalp.normalized(),{up,vp},texture? &*texture : nullptr);
+            
+            //         auto pixel_color = fragment_shader(payload);
+
+            //         value += pixel_color;
+            //     }
+            // }
+            // value /= 4;
+            // if(value.x()+value.y()+value.z()==0) continue;
+            // auto index = get_index(x, y);
+            // if(depth_buf[index] < depth) continue;
+            // depth_buf[index] = depth;
+            // set_pixel({x, y}, value);
+
+            //~ without MSAA
+
+            auto index = get_index(x, y);
+            // calculate the barycentric coordinates
+            if (!insideTriangle(x+0.5, y+0.5, t.v)) continue;
+            auto [alpha, beta, gamma] = computeBarycentric2D(x, y, t.v);
+
+            // calculate the interpolated depth(z)
+            auto w_reciprocal = 1.0/(alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
+            // auto zp = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
+            auto zp = barycentric_interp(alpha, beta, gamma, v[0].z()/v[0].w(), v[1].z()/v[1].w(), v[2].z()/v[2].w());
+            zp *= w_reciprocal;
+
+            // calculate the interpolated base color
+            auto colorp = barycentric_interp(alpha,beta,gamma,t.color[0],t.color[1],t.color[2]);
+
+            // calculate the interpolated normal
+            Eigen::Vector3f normalp = barycentric_interp(alpha,beta,gamma,t.normal[0],t.normal[1],t.normal[2]).normalized();
+
+            // calculate the interpolated uv coordinates
+            auto up = barycentric_interp(alpha, beta, gamma, t.tex_coords[0][0], t.tex_coords[1][0], t.tex_coords[2][0]);
+            auto vp = barycentric_interp(alpha, beta, gamma, t.tex_coords[0][1], t.tex_coords[1][1], t.tex_coords[2][1]);
+
+            // get the final shading color from texture
+            // interpolated shading coords
+            Eigen::Vector3f shading_coordsp = barycentric_interp(alpha, beta, gamma, view_pos[0], view_pos[1], view_pos[2]);
+            fragment_shader_payload payload(colorp, normalp.normalized(),{up,vp},texture? &*texture : nullptr);
+            
+            // set the pixel color
+            auto pixel_color = fragment_shader(payload);
+
+            if (depth_buf[index] < zp) continue;
+            depth_buf[index] = zp;
+            set_pixel({x, y}, pixel_color);
+        }
+    }
     // TODO: From your HW3, get the triangle rasterization code.
     // TODO: Inside your rasterization loop:
     //    * v[i].w() is the vertex view space depth value z.
