@@ -1,5 +1,5 @@
 {
     "cmake.debugConfig": {
-        "args": ["output.png", "normal"]
+        "args": ["output.png", "phong"]
     }
 }
