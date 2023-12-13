@@ -1,8 +1,0 @@
-[
-{
-  "directory": "/home/harveylwo/games101_homework/build",
-  "command": "/usr/bin/clang++  -isystem /usr/include/opencv4 -g -std=gnu++14 -o CMakeFiles/BezierCurve.dir/main.cpp.o -c /home/harveylwo/games101_homework/main.cpp",
-  "file": "/home/harveylwo/games101_homework/main.cpp",
-  "output": "CMakeFiles/BezierCurve.dir/main.cpp.o"
-}
-]
