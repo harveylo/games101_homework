@@ -4,6 +4,7 @@
 #include "Vector.hpp"
 #include "global.hpp"
 #include <chrono>
+#include <iostream>
 
 // In the main function of the program, we create the scene (create objects and
 // lights) as well as set the options for the render (image width and height,
@@ -19,6 +20,7 @@ int main(int argc, char** argv)
     scene.Add(std::make_unique<Light>(Vector3f(-20, 70, 20), 1));
     scene.Add(std::make_unique<Light>(Vector3f(20, 70, 20), 1));
     scene.buildBVH();
+    std::cout << "BVH built\n";
 
     Renderer r;
 
