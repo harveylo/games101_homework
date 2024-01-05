@@ -32,6 +32,7 @@ BVHBuildNode* BVHAccel::recursiveBuild(std::vector<Object*> objects)
     // Compute bounds of all primitives in BVH node
     Bounds3 bounds;
     for (int i = 0; i < objects.size(); ++i)
+        // Union function take two bounds, get a bound that can contain those two bounds completely
         bounds = Union(bounds, objects[i]->getBounds());
     if (objects.size() == 1) {
         // Create leaf _BVHBuildNode_
@@ -45,6 +46,7 @@ BVHBuildNode* BVHAccel::recursiveBuild(std::vector<Object*> objects)
         node->left = recursiveBuild(std::vector{objects[0]});
         node->right = recursiveBuild(std::vector{objects[1]});
 
+        // if only two objects remains, then the bounds of the node is the union of the two objects
         node->bounds = Union(node->left->bounds, node->right->bounds);
         return node;
     }
@@ -52,10 +54,20 @@ BVHBuildNode* BVHAccel::recursiveBuild(std::vector<Object*> objects)
         Bounds3 centroidBounds;
         for (int i = 0; i < objects.size(); ++i)
             centroidBounds =
+                // Centroid function returns the center point(Vector3f) of a bound
+                // Bounds can be constructed from a Vector3f, in such case, the bound's min and max are both the Vector3f
+                // which means the bound only encloses a point
                 Union(centroidBounds, objects[i]->getBounds().Centroid());
+        // the final centroidBounds is the bound that encloses all the centroids of the objects.
+
+        // the maxExtent function returns the dimension(x, y, z) of the bound that has the largest extent
+        // return 0 for x, 1 for y, 2 for z
         int dim = centroidBounds.maxExtent();
+
+        // split the objects into two groups according to the dimension that has the largest extent
         switch (dim) {
         case 0:
+            // sort objects on that dimension
             std::sort(objects.begin(), objects.end(), [](auto f1, auto f2) {
                 return f1->getBounds().Centroid().x <
                        f2->getBounds().Centroid().x;
@@ -79,14 +91,17 @@ BVHBuildNode* BVHAccel::recursiveBuild(std::vector<Object*> objects)
         auto middling = objects.begin() + (objects.size() / 2);
         auto ending = objects.end();
 
+        // split the objects into two vectors, each contains half of the objects
         auto leftshapes = std::vector<Object*>(beginning, middling);
         auto rightshapes = std::vector<Object*>(middling, ending);
 
         assert(objects.size() == (leftshapes.size() + rightshapes.size()));
 
+        // recursively build the left and right nodes of each half
         node->left = recursiveBuild(leftshapes);
         node->right = recursiveBuild(rightshapes);
 
+        // the bound of the node is the union of the bounds of the left and right nodes
         node->bounds = Union(node->left->bounds, node->right->bounds);
     }
 
