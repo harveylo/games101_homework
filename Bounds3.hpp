@@ -84,18 +84,31 @@ class Bounds3
         return (i == 0) ? pMin : pMax;
     }
 
-    inline bool IntersectP(const Ray& ray, const Vector3f& invDir,
-                           const std::array<int, 3>& dirisNeg) const;
+    inline bool IntersectP(const Ray& ray, const Vector3f& invDir
+                        //    ,const std::array<int, 3>& dirisNeg
+                           ) const;
 };
 
 
 
-inline bool Bounds3::IntersectP(const Ray& ray, const Vector3f& invDir,
-                                const std::array<int, 3>& dirIsNeg) const
+inline bool Bounds3::IntersectP(const Ray& ray, const Vector3f& invDir
+                                // ,const std::array<int, 3>& dirIsNeg
+                                ) const
 {
     // invDir: ray direction(x,y,z), invDir=(1.0/x,1.0/y,1.0/z), use this because Multiply is faster that Division
     // dirIsNeg: ray direction(x,y,z), dirIsNeg=[int(x>0),int(y>0),int(z>0)], use this to simplify your logic
     // TODO test if ray bound intersects
+
+    auto t_min = (pMin - ray.origin) * invDir;
+    auto t_max = (pMax - ray.origin) * invDir;
+
+    auto t_min2 = Vector3f::Min(t_min, t_max);
+    auto t_max2 = Vector3f::Max(t_min, t_max);
+
+    auto t_enter = std::max(std::max(t_min2.x, t_min2.y), t_min2.z);
+    auto t_exit = std::min(std::min(t_max2.x, t_max2.y), t_max2.z);
+
+    return (t_enter < t_exit) && (t_exit >= 0);
 
 }
 
