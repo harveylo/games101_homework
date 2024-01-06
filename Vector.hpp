@@ -18,6 +18,12 @@ public:
     Vector3f operator * (const float &r) const { return Vector3f(x * r, y * r, z * r); }
     Vector3f operator / (const float &r) const { return Vector3f(x / r, y / r, z / r); }
 
+    float norm() {return std::sqrt(x * x + y * y + z * z);}
+    Vector3f normalized() {
+        float n = std::sqrt(x * x + y * y + z * z);
+        return Vector3f(x / n, y / n, z / n);
+    }
+
     Vector3f operator * (const Vector3f &v) const { return Vector3f(x * v.x, y * v.y, z * v.z); }
     Vector3f operator - (const Vector3f &v) const { return Vector3f(x - v.x, y - v.y, z - v.z); }
     Vector3f operator + (const Vector3f &v) const { return Vector3f(x + v.x, y + v.y, z + v.z); }
@@ -27,22 +33,8 @@ public:
     { return Vector3f(v.x * r, v.y * r, v.z * r); }
     friend std::ostream & operator << (std::ostream &os, const Vector3f &v)
     { return os << v.x << ", " << v.y << ", " << v.z; }
-    float       operator[](int index) const;
-    float&      operator[](int index);
-
-    float length() const { return std::sqrt(x * x + y * y + z * z); }
-
-
-    Vector3f& normalize()
-    {
-        double nor = length();
-        if (nor > 0) {
-            double invNor = 1 / sqrt(nor);
-            x *= invNor, y *= invNor, z *= invNor;
-        }
-
-        return *this;
-    }
+    double       operator[](int index) const;
+    double&      operator[](int index);
 
 
     static Vector3f Min(const Vector3f &p1, const Vector3f &p2) {
@@ -55,10 +47,7 @@ public:
                        std::max(p1.z, p2.z));
     }
 };
-inline float Vector3f::operator[](int index) const {
-    return (&x)[index];
-}
-inline float& Vector3f::operator[](int index) {
+inline double Vector3f::operator[](int index) const {
     return (&x)[index];
 }
 
