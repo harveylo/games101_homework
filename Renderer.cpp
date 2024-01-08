@@ -10,7 +10,7 @@
 
 
 constexpr int MAX_BATCH = 32;
-constexpr int BATCH = 16;
+constexpr int BATCH = 32;
 
 
 inline float deg2rad(const float& deg) { return deg * M_PI / 180.0; }
@@ -33,7 +33,7 @@ void Renderer::Render(const Scene& scene)
     auto sema = std::counting_semaphore<MAX_BATCH>(BATCH);
 
     // change the spp value to change sample ammount
-    constexpr int spp = 64;
+    constexpr int spp = 512;
     std::cout << "SPP: " << spp << "\n";
 
     auto render_pixel = [&](int i, int j) {

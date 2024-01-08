@@ -110,7 +110,8 @@ inline bool Bounds3::IntersectP(const Ray& ray, const Vector3f& invDir
 
     // ! should return true if t_enter equals to t_exit
     // ! because some bounding box is a plane, in such situation, t_enter equals to t_exit
-    return (t_enter <= t_exit + 0.0001) && (t_exit >= 0);
+    // ! can not use t_exit >= 0, will result some black noise
+    return (t_enter <= t_exit + 0.0001) && (t_exit > 0);
 
 }
 
