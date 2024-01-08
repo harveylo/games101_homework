@@ -108,7 +108,9 @@ inline bool Bounds3::IntersectP(const Ray& ray, const Vector3f& invDir
     auto t_enter = std::max(std::max(t_min2.x, t_min2.y), t_min2.z);
     auto t_exit = std::min(std::min(t_max2.x, t_max2.y), t_max2.z);
 
-    return (t_enter < t_exit) && (t_exit >= 0);
+    // ! should return true if t_enter equals to t_exit
+    // ! because some bounding box is a plane, in such situation, t_enter equals to t_exit
+    return (t_enter <= t_exit + 0.0001) && (t_exit >= 0);
 
 }
 
