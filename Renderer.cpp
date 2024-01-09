@@ -33,9 +33,10 @@ void Renderer::Render(const Scene& scene)
     auto sema = std::counting_semaphore<MAX_BATCH>(BATCH);
 
     // change the spp value to change sample ammount
-    constexpr int spp = 512;
+    constexpr int spp = 128;
     std::cout << "SPP: " << spp << "\n";
 
+    // Multi-thread workload functor
     auto render_pixel = [&](int i, int j) {
         // generate primary ray direction
         float x = (2 * (i + 0.5) / (float)scene.width - 1) *
@@ -59,6 +60,7 @@ void Renderer::Render(const Scene& scene)
         }
         UpdateProgress(j / (float)scene.height);
     }
+    // Make sure all threads are done
     for(int i = 0; i < BATCH; i++)
         sema.acquire();
     UpdateProgress(1.f);
