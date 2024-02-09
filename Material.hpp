@@ -6,8 +6,11 @@
 #define RAYTRACING_MATERIAL_H
 
 #include "Vector.hpp"
+#include "global.hpp"
+#include <cmath>
 
-enum MaterialType { DIFFUSE};
+enum MaterialType { DIFFUSE,MICROFACET};
+
 
 class Material{
 private:
@@ -131,6 +134,7 @@ Vector3f Material::getColorAt(double u, double v) {
 
 Vector3f Material::sample(const Vector3f &wi, const Vector3f &N){
     switch(m_type){
+        case MICROFACET:
         case DIFFUSE:
         {
             // uniform sample on the hemisphere
@@ -147,6 +151,7 @@ Vector3f Material::sample(const Vector3f &wi, const Vector3f &N){
 
 float Material::pdf(const Vector3f &wi, const Vector3f &wo, const Vector3f &N){
     switch(m_type){
+        case MICROFACET:
         case DIFFUSE:
         {
             // uniform sample probability 1 / (2 * PI)
@@ -159,7 +164,25 @@ float Material::pdf(const Vector3f &wi, const Vector3f &wo, const Vector3f &N){
     }
 }
 
+static inline float Lambda(const Vector3f& w, const Vector3f& N, const float& alpha){
+    float cos_theta = std::max(0.0f,dotProduct(N, w));
+    float tan_theta_2 = (1 - cos_theta * cos_theta) / (cos_theta * cos_theta);
+    return (-1 + std::sqrt(1 + alpha * alpha * tan_theta_2)) / 2;
+}
+
+static inline float G_Func(const Vector3f& wi, const Vector3f& wo, const Vector3f& N, const float& alpha){
+    return 1 / (1 + Lambda(wi, N, alpha) + Lambda(wo, N, alpha));
+}
+
+static inline float D_Func(const Vector3f& N, const Vector3f& H, const float& alpha){
+    float cos_theta = std::max(dotProduct(N, H),0.0f);
+    return alpha * alpha / (M_PI * powf(cos_theta * cos_theta * (alpha * alpha - 1) + 1, 2));
+}
+
+
 Vector3f Material::eval(const Vector3f &wi, const Vector3f &wo, const Vector3f &N){
+    auto rwo = wi;
+    auto rwi = wo;
     switch(m_type){
         case DIFFUSE:
         {
@@ -172,6 +195,26 @@ Vector3f Material::eval(const Vector3f &wi, const Vector3f &wo, const Vector3f &
             else
                 return Vector3f(0.0f);
             break;
+        }
+        case MICROFACET:
+        {
+            constexpr float eps = 1e-6;
+            float cos_theta = dotProduct(N, rwi);
+            if(cos_theta<=0.0f) return Vector3f(0.0f);
+            
+            auto diffuse = Kd / M_PI;
+
+            constexpr float alpha = 0.25;
+
+            float D = D_Func(N, (rwi + rwo).normalized(), alpha);
+            float G = G_Func(rwi, rwo, N, alpha);
+
+            float F;
+            fresnel(rwi, N, ior, F);
+
+            auto specular = Ks * D * G * F / (4 * std::max(eps,cos_theta * dotProduct(N, rwo)));
+
+            return diffuse + specular;
         }
     }
 }

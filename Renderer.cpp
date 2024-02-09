@@ -15,7 +15,7 @@ constexpr int BATCH = 32;
 
 inline float deg2rad(const float& deg) { return deg * M_PI / 180.0; }
 
-constexpr float EPSILON = 0.00001;
+constexpr float EPSILON = 0.001;
 
 
 // The main render function. This where we iterate over all pixels in the image,
@@ -34,6 +34,7 @@ void Renderer::Render(const Scene& scene)
 
     // change the spp value to change sample ammount
     constexpr int spp = 128;
+    
     std::cout << "SPP: " << spp << "\n";
 
     // Multi-thread workload functor

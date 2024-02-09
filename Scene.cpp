@@ -87,6 +87,8 @@ Vector3f Scene::castRay(const Ray &ray, int depth) const
     // ? sample the direct light
     Intersection light_intersec;
 
+    // wo = -wo;
+
     float light_pdf;
     sampleLight(light_intersec, light_pdf);
     auto light_pos = light_intersec.coords;
