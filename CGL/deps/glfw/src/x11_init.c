@@ -241,9 +241,21 @@ static void createKeyTables(void)
         // keyboard layout
 
         char name[XkbKeyNameLength + 1];
-        XkbDescPtr descr = XkbGetKeyboard(_glfw.x11.display,
+        // ! should not use the XkbGetKeyboard function, it returns nullptr
+        // ? check this issue here: https://github.com/glfw/glfw/issues/389
+        // ? 'The reason this returns NULL is because we don't send the map name at all in Wayland; 
+        // ? in fact, it may not have originally been XKB. 
+        // ? Using XkbGetMap instead of XkbGetKeyboard will fix that.'
+        // XkbDescPtr descr = XkbGetKeyboard(_glfw.x11.display,
+        //                                   XkbAllComponentsMask,
+        //                                   XkbUseCoreKbd);
+        // * So the solution is to use XkbGetMap instead of XkbGetKeyboard
+        // * check this commit https://github.com/glfw/glfw/commit/2d39dff84af0f51e5c11c3e9b953cd2e2af166ef
+        XkbDescPtr descr = XkbGetMap(_glfw.x11.display,
                                           XkbAllComponentsMask,
                                           XkbUseCoreKbd);
+
+        XkbGetNames(_glfw.x11.display, XkbKeyNamesMask, descr);                             
 
         // Find the X11 key code -> GLFW key code mapping
         for (scancode = descr->min_key_code;  scancode <= descr->max_key_code;  scancode++)
